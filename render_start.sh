@@ -1,20 +1,21 @@
 #!/bin/bash
 echo "[OpenAlgo-Render] Starting up..."
 
-# ============================================
-# RENDER ENVIRONMENT - SIMPLIFIED START
-# ============================================
+# Export to skip version check prompt
+export SKIP_VERSION_CHECK=1
 
 # Generate .env from Render environment variables
 echo "[OpenAlgo-Render] Generating .env file..."
 
 cat > .env << EOF
 # OpenAlgo Environment Configuration
-ENV_CONFIG_VERSION = '1.0.4'
+ENV_CONFIG_VERSION = '1.0.6'
 
 # Broker Configuration
 BROKER_API_KEY = '${BROKER_API_KEY}'
 BROKER_API_SECRET = '${BROKER_API_SECRET}'
+BROKER_API_KEY_MARKET = ''
+BROKER_API_SECRET_MARKET = ''
 
 # Redirect URL
 REDIRECT_URL = '${REDIRECT_URL}'
@@ -32,24 +33,24 @@ LATENCY_DATABASE_URL = '${LATENCY_DATABASE_URL:-sqlite:///db/latency.db}'
 LOGS_DATABASE_URL = '${LOGS_DATABASE_URL:-sqlite:///db/logs.db}'
 SANDBOX_DATABASE_URL = '${SANDBOX_DATABASE_URL:-sqlite:///db/sandbox.db}'
 
-# Ngrok - Disabled
+# Ngrok
 NGROK_ALLOW = 'FALSE'
 
 # Host Server
 HOST_SERVER = '${HOST_SERVER}'
 
-# Flask Configuration
+# Flask
 FLASK_HOST_IP = '0.0.0.0'
 FLASK_PORT = '${PORT}'
 FLASK_DEBUG = 'False'
 FLASK_ENV = 'production'
 
-# WebSocket Configuration
+# WebSocket
 WEBSOCKET_HOST = '0.0.0.0'
 WEBSOCKET_PORT = '8765'
 WEBSOCKET_URL = 'wss://hk-openalgo.onrender.com/ws'
 
-# ZeroMQ Configuration
+# ZeroMQ
 ZMQ_HOST = '0.0.0.0'
 ZMQ_PORT = '5555'
 
@@ -112,19 +113,18 @@ SESSION_COOKIE_NAME = 'session'
 CSRF_COOKIE_NAME = 'csrf_token'
 EOF
 
-echo "[OpenAlgo-Render] .env file created"
+echo "[OpenAlgo-Render] .env file created with version 1.0.6"
 
-# Create necessary directories
+# Create directories
 mkdir -p db log log/strategies strategies strategies/scripts keys 2>/dev/null || true
 chmod -R 755 db log strategies 2>/dev/null || true
-chmod 700 keys 2>/dev/null || true
 
-# Start WebSocket proxy in background
+# Start WebSocket proxy
 echo "[OpenAlgo-Render] Starting WebSocket proxy..."
 python -m websocket_proxy.server &
 WEBSOCKET_PID=$!
 
-# Cleanup on exit
+# Cleanup
 cleanup() {
     echo "[OpenAlgo-Render] Shutting down..."
     kill $WEBSOCKET_PID 2>/dev/null || true
@@ -132,9 +132,9 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-# Start main application with gunicorn
+# Start app - pipe 'y' to bypass version prompt
 echo "[OpenAlgo-Render] Starting application on port ${PORT}..."
-exec gunicorn \
+echo "y" | gunicorn \
     --worker-class eventlet \
     --workers 1 \
     --bind 0.0.0.0:${PORT} \
